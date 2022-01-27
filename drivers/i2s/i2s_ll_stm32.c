@@ -130,6 +130,10 @@ static int i2s_stm32_set_clock(const struct device *dev,
 	freq_in = (pll_src == LL_RCC_PLLSOURCE_HSI) ?
 		   HSI_VALUE : CONFIG_CLOCK_STM32_HSE_CLOCK;
 
+#ifdef CONFIG_BOARD_ICM1_G431KB
+	freq_in = 16000000 /4 *85 /7;
+#endif /* CONFIG_BOARD_ICM1_G431KB */
+
 #ifdef CONFIG_I2S_STM32_USE_PLLI2S_ENABLE
 	/* Set PLLI2S */
 	LL_RCC_PLLI2S_Disable();
