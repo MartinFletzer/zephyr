@@ -472,7 +472,7 @@ static int start_dma(const struct device *dev_dma, uint32_t channel,
 	int ret;
 
 	memset(&blk_cfg, 0, sizeof(blk_cfg));
-	blk_cfg.block_size = blk_size;
+	blk_cfg.block_size = blk_size*2;
 	blk_cfg.source_address = (uint32_t)src;
 	blk_cfg.dest_address = (uint32_t)dst;
 	if (src_addr_increment) {
@@ -486,6 +486,8 @@ static int start_dma(const struct device *dev_dma, uint32_t channel,
 		blk_cfg.dest_addr_adj = DMA_ADDR_ADJ_NO_CHANGE;
 	}
 	blk_cfg.fifo_mode_control = fifo_threshold;
+	blk_cfg.source_reload_en = 1;
+	blk_cfg.dest_reload_en = 1;
 
 	dcfg->head_block = &blk_cfg;
 
@@ -538,7 +540,7 @@ static void dma_rx_callback(const struct device *dma_dev, void *arg,
 		goto rx_disable;
 	}
 
-	ret = reload_dma(stream->dev_dma, stream->dma_channel,
+	/*ret = reload_dma(stream->dev_dma, stream->dma_channel,
 			&stream->dma_cfg,
 			(void *)LL_SPI_DMA_GetRegAddr(cfg->i2s),
 			stream->mem_block,
@@ -546,7 +548,7 @@ static void dma_rx_callback(const struct device *dma_dev, void *arg,
 	if (ret < 0) {
 		LOG_DBG("Failed to start RX DMA transfer: %d", ret);
 		goto rx_disable;
-	}
+	}*/
 
 	/* Assure cache coherency after DMA write operation */
 	DCACHE_INVALIDATE(mblk_tmp, stream->cfg.block_size);
@@ -710,11 +712,21 @@ static int rx_stream_start(struct stream *stream, const struct device *dev)
 	const struct i2s_stm32_cfg *cfg = DEV_CFG(dev);
 	int ret;
 
+	void *mblk_tmp;
+
+	ret = k_mem_slab_alloc(stream->cfg.mem_slab, &mblk_tmp,
+			       K_NO_WAIT);
+	if (ret < 0) {
+		return ret;
+	}
+
 	ret = k_mem_slab_alloc(stream->cfg.mem_slab, &stream->mem_block,
 			       K_NO_WAIT);
 	if (ret < 0) {
 		return ret;
 	}
+
+	k_mem_slab_free(stream->cfg.mem_slab, &mblk_tmp);
 
 	if (stream->master) {
 		LL_I2S_SetTransferMode(cfg->i2s, LL_I2S_MODE_MASTER_RX);
