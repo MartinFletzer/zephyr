@@ -564,6 +564,23 @@ static int stm32_clock_control_init(const struct device *dev)
 	LL_RCC_HSE_DisableBypass();
 #endif
 
+#if CONFIG_BOARD_PORTENTA_H747_VISION_M7
+	LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOH);
+	MODIFY_REG(GPIOH->MODER, 3<<2, 1<<2);
+	WRITE_REG(GPIOH->BSRR, 1<<1);
+	LL_AHB4_GRP1_DisableClock(LL_AHB4_GRP1_PERIPH_GPIOH);
+
+	// PA8->AF0->MCO1
+	LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOA);
+	MODIFY_REG(GPIOA->MODER, 3<<16, 2<<16);
+
+	// MCO1-PRE->15
+	MODIFY_REG(RCC->CFGR, 0xf<<18, 0xf<<18);
+	// MCO1->HSE
+	MODIFY_REG(RCC->CFGR, 0x7<<22, 2<<22);
+	//LL_AHB4_GRP1_DisableClock(LL_AHB4_GRP1_PERIPH_GPIOA);
+#endif //CONFIG_BOARD_PORTENTA_H747_VISION_M7
+
 	/* Enable HSE oscillator */
 	LL_RCC_HSE_Enable();
 	while (LL_RCC_HSE_IsReady() != 1) {
