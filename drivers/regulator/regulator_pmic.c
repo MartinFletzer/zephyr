@@ -296,6 +296,14 @@ static int pmic_reg_init(const struct device *dev)
 	if (config->i2c_dev == NULL || !device_is_ready(config->i2c_dev)) {
 		return -ENODEV;
 	}
+
+#if CONFIG_BOARD_PORTENTA_H747_VISION_M7
+	// if LDO3 set voltage
+	if (config->enable_reg == 0x53) {
+		regulator_set_voltage(dev, 1200000, 1200000);
+	}
+	enable_regulator(dev, NULL);
+#endif //CONFIG_BOARD_PORTENTA_H747_VISION_M7
 	return 0;
 }
 
