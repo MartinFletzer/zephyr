@@ -181,9 +181,6 @@ void z_arm_prep_c(void)
 #if defined(CONFIG_CPU_HAS_FPU)
 	z_arm_floating_point_init();
 #endif
-#if defined(CONFIG_BOARD_ICM1_G431KB)
-	RebootBootloader();
-#endif
 	z_bss_zero();
 	z_data_copy();
 #if ((defined(CONFIG_ARMV7_R) || defined(CONFIG_ARMV7_A)) && defined(CONFIG_INIT_STACKS))
