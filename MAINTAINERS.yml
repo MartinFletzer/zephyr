@@ -129,7 +129,7 @@ ARC arch:
 ARM arch:
     status: maintained
     maintainers:
-        - ioannisg
+        - microbuilder
     collaborators:
         - carlocaione
         - galak
@@ -363,9 +363,9 @@ DFU:
 Devicetree:
     status: maintained
     maintainers:
-        - galak
-    collaborators:
         - mbolivar-nordic
+    collaborators:
+        - galak
     files:
         - scripts/dts/
         - dts/bindings/
@@ -450,6 +450,7 @@ Documentation:
         - lgirdwood
         - mengxianglinx
         - marc-hb
+        - kv2019i
     files:
         - drivers/audio/
         - include/audio/
@@ -542,7 +543,9 @@ Documentation:
         - "area: DAC"
 
 "Drivers: DMA":
-    status: orphaned
+    status: maintained
+    maintainers:
+        - teburd
     files:
         - drivers/dma/
         - tests/drivers/dma/
@@ -579,7 +582,7 @@ Documentation:
       - albertofloyd
     collaborators:
       - VenkatKotakonda
-      - scottwcpg
+      - jvasanth1
     files:
         - drivers/espi/
         - include/drivers/espi.h
@@ -638,7 +641,9 @@ Documentation:
         - "area: HWINFO"
 
 "Drivers: I2C":
-    status: orphaned
+    status: maintained
+    maintainers:
+        - teburd
     files:
         - drivers/i2c/
         - dts/bindings/i2c/
@@ -849,6 +854,7 @@ Documentation:
         - include/drivers/uart.h
         - include/drivers/uart/
         - dts/bindings/serial/
+        - samples/drivers/uart/
         - tests/drivers/uart/
     labels:
         - "area: UART"
@@ -1117,6 +1123,18 @@ hawkBit:
     labels:
         - "area: hawkBit"
 
+"mgmt: updatehub":
+    status: maintained
+    maintainers:
+        - nandojve
+    files:
+        - subsys/mgmt/updatehub/
+        - samples/subsys/mgmt/updatehub/
+    labels:
+        - "area: updatehub"
+    description: >-
+        UpdateHub embedded Firmware Over-The-Air (FOTA) upgrade agent
+
 Native POSIX and POSIX arch:
     status: maintained
     maintainers:
@@ -1203,6 +1221,8 @@ Networking:
     status: maintained
     maintainers:
         - rlubos
+    collaborators:
+        - SeppoTakalo
     files:
         - samples/net/lwm2m_client/
         - subsys/net/lib/lwm2m/
@@ -1313,6 +1333,7 @@ Twister:
         - PerMac
         - enjiamai
         - hakehuang
+        - gopiotr
     files:
         - scripts/twister
         - scripts/pylib/twister/
@@ -1387,14 +1408,19 @@ GD32 Platforms:
     maintainers:
         - nandojve
         - gmarull
+    collaborators:
+        - soburi
     files:
         - boards/arm/gd32*/
+        - boards/riscv/gd32*/
+        - boards/riscv/longan_nano/
         - drivers/*/*gd32*/
         - drivers/*/*gd32*
-        - dts/arm/gigadevice/
+        - dts/*/gigadevice/
         - dts/bindings/*/*gd32*
         - modules/hal_gigadevice/
         - soc/arm/gigadevice/
+        - soc/riscv/riscv-privilege/gd32vf103/
         - scripts/west_commands/*/*gd32*
     labels:
         - "platform: GD32"
@@ -1487,6 +1513,11 @@ Intel Platforms (Xtensa):
     collaborators:
         - andyross
         - dcpleung
+        - lyakh
+        - lgirdwood
+        - mengxianglinx
+        - marc-hb
+        - kv2019i
     files:
         - boards/xtensa/intel_*/
         - soc/xtensa/intel_*/
@@ -1518,7 +1549,7 @@ NXP Platforms:
 Microchip Platforms:
   status: maintained
   maintainers:
-    - scottwcpg
+    - jvasanth1
   collaborators:
     - VenkatKotakonda
     - albertofloyd
@@ -1773,7 +1804,6 @@ CI:
         - galak
     files:
         - .github/
-        - .buildkite/
         - scripts/ci/
         - .checkpatch.conf
         - scripts/gitlint/

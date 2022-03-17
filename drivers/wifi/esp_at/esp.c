@@ -430,7 +430,8 @@ MODEM_CMD_DEFINE(on_cmd_cipsta)
 
 static void esp_ip_addr_work(struct k_work *work)
 {
-	struct esp_data *dev = CONTAINER_OF(work, struct esp_data,
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct esp_data *dev = CONTAINER_OF(dwork, struct esp_data,
 					    ip_addr_work);
 	int ret;
 
@@ -949,7 +950,6 @@ static void esp_init_work(struct k_work *work)
 
 		SETUP_CMD_NOHANDLE(
 			ESP_CMD_CWLAPOPT(ESP_CMD_CWLAPOPT_ORDERED, ESP_CMD_CWLAPOPT_MASK)),
-		SETUP_CMD_NOHANDLE(ESP_CMD_CWLAP),
 
 #if defined(CONFIG_WIFI_ESP_AT_VERSION_2_0)
 		SETUP_CMD_NOHANDLE(ESP_CMD_CWMODE(STA)),

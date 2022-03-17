@@ -21,6 +21,7 @@
 #include "util/mem.h"
 #include "util/memq.h"
 #include "util/mfifo.h"
+#include "util/dbuf.h"
 
 #include "ticker/ticker.h"
 
@@ -471,8 +472,7 @@ struct pdu_adv *lll_adv_pdu_latest_get(struct lll_adv_pdu *pdu,
 			 * switch attempt (on next event).
 			 */
 			if (!MFIFO_ENQUEUE_IDX_GET(pdu_free, &free_idx)) {
-				pdu->pdu[pdu_idx] = p;
-				return NULL;
+				break;
 			}
 
 #if defined(CONFIG_BT_CTLR_ADV_PDU_LINK)
@@ -487,16 +487,19 @@ struct pdu_adv *lll_adv_pdu_latest_get(struct lll_adv_pdu *pdu,
 			p = next;
 		} while (p);
 
-		pdu->pdu[pdu_idx] = NULL;
+		/* If not all PDUs where released into mfifo, keep the list in
+		 * current data index, to be released on the next switch
+		 * attempt.
+		 */
+		pdu->pdu[pdu_idx] = p;
 
+		/* Progress to next data index */
 		first += 1U;
 		if (first == DOUBLE_BUFFER_SIZE) {
 			first = 0U;
 		}
 		pdu->first = first;
 		*is_modified = 1U;
-
-		pdu->pdu[pdu_idx] = NULL;
 	}
 
 	return (void *)pdu->pdu[first];
@@ -894,10 +897,12 @@ static int prepare_cb(struct lll_prepare_param *p)
 #if defined(CONFIG_BT_CTLR_ADV_EXT)
 	/* TODO: if coded we use S8? */
 	radio_phy_set(lll->phy_p, lll->phy_flags);
-	radio_pkt_configure(8, PDU_AC_LEG_PAYLOAD_SIZE_MAX, (lll->phy_p << 1));
+	radio_pkt_configure(RADIO_PKT_CONF_LENGTH_8BIT, PDU_AC_LEG_PAYLOAD_SIZE_MAX,
+			    RADIO_PKT_CONF_PHY(lll->phy_p));
 #else /* !CONFIG_BT_CTLR_ADV_EXT */
 	radio_phy_set(0, 0);
-	radio_pkt_configure(8, PDU_AC_LEG_PAYLOAD_SIZE_MAX, 0);
+	radio_pkt_configure(RADIO_PKT_CONF_LENGTH_8BIT, PDU_AC_LEG_PAYLOAD_SIZE_MAX,
+			    RADIO_PKT_CONF_PHY(RADIO_PKT_CONF_PHY_LEGACY));
 #endif /* !CONFIG_BT_CTLR_ADV_EXT */
 
 	aa = sys_cpu_to_le32(PDU_AC_ACCESS_ADDR);

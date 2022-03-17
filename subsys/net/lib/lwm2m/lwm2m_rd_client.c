@@ -112,8 +112,8 @@ struct lwm2m_rd_client_info {
 	char server_ep[CLIENT_EP_LEN];
 
 	lwm2m_ctx_event_cb_t event_cb;
-
 	bool use_bootstrap : 1;
+
 	bool trigger_update : 1;
 	bool update_objects : 1;
 } client;
@@ -311,7 +311,6 @@ static int do_bootstrap_reply_cb(const struct coap_packet *response,
 		COAP_RESPONSE_CODE_CLASS(code), COAP_RESPONSE_CODE_DETAIL(code),
 		code2str(code));
 
-	lwm2m_engine_context_close(client.ctx);
 	sm_handle_failure_state(ENGINE_IDLE);
 
 	return 0;
@@ -330,6 +329,24 @@ static void do_bootstrap_reg_timeout_cb(struct lwm2m_message *msg)
 }
 #endif
 
+int engine_trigger_bootstrap(void)
+{
+#if defined(CONFIG_LWM2M_RD_CLIENT_SUPPORT_BOOTSTRAP)
+	if (!sm_is_registered()) {
+		/* Bootstrap is not possible to trig */
+		LOG_WRN("Cannot trigger bootstrap from state %u", client.engine_state);
+		return -EPERM;
+	}
+
+	LOG_INF("Server Initiated Bootstrap");
+	client.use_bootstrap = true;
+	client.engine_state = ENGINE_INIT;
+
+	return 0;
+#else
+	return -EPERM;
+#endif
+}
 static int do_registration_reply_cb(const struct coap_packet *response,
 				    struct coap_reply *reply,
 				    const struct sockaddr *from)
@@ -376,7 +393,6 @@ static int do_registration_reply_cb(const struct coap_packet *response,
 		COAP_RESPONSE_CODE_CLASS(code), COAP_RESPONSE_CODE_DETAIL(code),
 		code2str(code));
 
-	lwm2m_engine_context_close(client.ctx);
 	sm_handle_failure_state(ENGINE_IDLE);
 
 	return 0;
@@ -448,7 +464,6 @@ static int do_deregister_reply_cb(const struct coap_packet *response,
 		COAP_RESPONSE_CODE_CLASS(code), COAP_RESPONSE_CODE_DETAIL(code),
 		code2str(code));
 
-	lwm2m_engine_context_close(client.ctx);
 	sm_handle_failure_state(ENGINE_IDLE);
 
 	return 0;
@@ -682,6 +697,7 @@ static int sm_bootstrap_trans_done(void)
 
 	/* reset security object instance */
 	client.ctx->sec_obj_inst = -1;
+	client.use_bootstrap = false;
 
 	set_sm_state(ENGINE_DO_REGISTRATION);
 
@@ -985,6 +1001,9 @@ static void lwm2m_rd_client_service(struct k_work *work)
 	if (client.ctx) {
 		switch (get_sm_state()) {
 		case ENGINE_IDLE:
+			if (client.ctx->sock_fd > -1) {
+				lwm2m_engine_context_close(client.ctx);
+			}
 			break;
 
 		case ENGINE_INIT:
@@ -1092,9 +1111,6 @@ void lwm2m_rd_client_stop(struct lwm2m_ctx *client_ctx,
 	if (sm_is_registered() && deregister) {
 		set_sm_state(ENGINE_DEREGISTER);
 	} else {
-		if (client.ctx->sock_fd > -1) {
-			lwm2m_engine_context_close(client.ctx);
-		}
 		set_sm_state(ENGINE_IDLE);
 	}
 

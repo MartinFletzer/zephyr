@@ -453,6 +453,21 @@ class Handler:
             if c not in harness.tests:
                 harness.tests[c] = "BLOCK"
 
+    def _set_skip_reason(self, harness_state):
+        """
+        If testcase written in ztest framework is skipped by "ztest_test_skip()"
+        function, then such testcase is marked in instance.results dict as
+        "SKIP", but reason of this sipping still "Unknown". This method pick up
+        this situation and complete the instance.reason properly.
+        """
+        harness_state_pass = "passed"
+        harness_testcase_result_skip = "SKIP"
+        instance_reason_unknown = "Unknown"
+        if harness_state == harness_state_pass and \
+                self.instance.reason == instance_reason_unknown and \
+                harness_testcase_result_skip in self.instance.results.values():
+            self.instance.reason = "ztest skip"
+
 
 class BinaryHandler(Handler):
     def __init__(self, instance, type_str):
@@ -608,6 +623,8 @@ class BinaryHandler(Handler):
             self.set_state("timeout", handler_time)
             self.instance.reason = "Timeout"
             self.add_missing_testscases(harness)
+
+        self._set_skip_reason(harness.state)
 
         self.record(harness)
 
@@ -838,7 +855,8 @@ class DeviceHandler(Handler):
             with subprocess.Popen(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE) as proc:
                 try:
                     (stdout, stderr) = proc.communicate(timeout=30)
-                    logger.debug(stdout.decode())
+                    # ignore unencodable unicode chars
+                    logger.debug(stdout.decode(errors = "ignore"))
 
                     if proc.returncode != 0:
                         self.instance.reason = "Device issue (Flash?)"
@@ -903,6 +921,8 @@ class DeviceHandler(Handler):
                 self.instance.reason = "Failed"
         else:
             self.set_state(out_state, handler_time)
+
+        self._set_skip_reason(harness.state)
 
         if post_script:
             self.run_custom_script(post_script, 30)
@@ -1171,6 +1191,8 @@ class QEMUHandler(Handler):
             else:
                 self.instance.reason = "Exited with {}".format(self.returncode)
             self.add_missing_testscases(harness)
+
+        self._set_skip_reason(harness.state)
 
     def get_fifo(self):
         return self.fifo_fn
@@ -2139,7 +2161,7 @@ class CMake():
         if self.warnings_as_errors:
             ldflags = "-Wl,--fatal-warnings"
             cflags = "-Werror"
-            aflags = "-Wa,--fatal-warnings"
+            aflags = "-Werror -Wa,--fatal-warnings"
             gen_defines_args = "--edtlib-Werror"
         else:
             ldflags = cflags = aflags = ""
@@ -2149,9 +2171,9 @@ class CMake():
         cmake_args = [
             f'-B{self.build_dir}',
             f'-S{self.source_dir}',
-            f'-DEXTRA_CFLAGS="{cflags}"',
-            f'-DEXTRA_AFLAGS="{aflags}',
-            f'-DEXTRA_LDFLAGS="{ldflags}"',
+            f'-DEXTRA_CFLAGS={cflags}',
+            f'-DEXTRA_AFLAGS={aflags}',
+            f'-DEXTRA_LDFLAGS={ldflags}',
             f'-DEXTRA_GEN_DEFINES_ARGS={gen_defines_args}',
             f'-G{self.generator}'
         ]
@@ -3830,11 +3852,13 @@ class TestSuite(DisablePyTestCollectionMixin):
                     if rom_size:
                         testcase["rom_size"] = rom_size
 
-                    if instance.results[k] in ["PASS"] or instance.status == 'passed':
+                    if instance.results[k] in ["SKIP"] or instance.status == 'skipped':
+                        testcase["status"] = "skipped"
+                        testcase["reason"] = instance.reason
+                    elif instance.results[k] in ["PASS"] or instance.status == 'passed':
                         testcase["status"] = "passed"
                         if instance.handler:
                             testcase["execution_time"] =  handler_time
-
                     elif instance.results[k] in ['FAIL', 'BLOCK'] or instance.status in ["error", "failed", "timeout", "flash_error"]:
                         testcase["status"] = "failed"
                         testcase["reason"] = instance.reason
@@ -3845,9 +3869,6 @@ class TestSuite(DisablePyTestCollectionMixin):
                             testcase["device_log"] = self.process_log(device_log)
                         else:
                             testcase["build_log"] = self.process_log(build_log)
-                    elif instance.status == 'skipped':
-                        testcase["status"] = "skipped"
-                        testcase["reason"] = instance.reason
                     testcases.append(testcase)
 
         suites = [ {"testcases": testcases} ]
@@ -3868,13 +3889,14 @@ class TestSuite(DisablePyTestCollectionMixin):
         """
         Verify if platform name (passed by --platform option, or in yaml file
         as platform_allow or integration_platforms options) is correct. If not -
-        log error.
+        log and raise error.
         """
         for platform in platform_names_to_verify:
             if platform in self.platform_names:
                 break
             else:
                 logger.error(f"{log_info} - unrecognized platform - {platform}")
+                sys.exit(2)
 
 
 class CoverageTool:
