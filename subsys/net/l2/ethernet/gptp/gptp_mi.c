@@ -745,6 +745,11 @@ static void gptp_update_local_port_clock(void)
 	const struct device *clk;
 	struct net_ptp_time tm;
 	int key;
+	int64_t diff_ns;
+	double adjust_ratio;
+	int avg;
+	static int64_t diff_sum = 0;
+	static unsigned diff_cnt = 0;
 
 	state = &GPTP_STATE()->clk_slave_sync;
 	global_ds = GPTP_GLOBAL_DS();
@@ -755,10 +760,9 @@ static void gptp_update_local_port_clock(void)
 
 	/* Check if the last neighbor rate ratio can still be used */
 	if (!port_ds->neighbor_rate_ratio_valid) {
-		return;
 	}
-
 	port_ds->neighbor_rate_ratio_valid = false;
+
 
 	second_diff = global_ds->sync_receipt_time.second -
 		(global_ds->sync_receipt_local_time / NSEC_PER_SEC);
@@ -781,7 +785,38 @@ static void gptp_update_local_port_clock(void)
 		nanosecond_diff = -NSEC_PER_SEC + nanosecond_diff;
 	}
 
-	ptp_clock_rate_adjust(clk, port_ds->neighbor_rate_ratio);
+	// diff_ns < 0 -> local clock to fast
+	// diff_ns > 0 -> local clock to slow
+	if (second_diff > 0) {
+		diff_ns = NSEC_PER_SEC;
+	} else if (second_diff < 0) {
+		diff_ns = -NSEC_PER_SEC;
+	} else {
+		diff_ns = nanosecond_diff;
+	}
+
+	diff_sum += diff_ns;
+	diff_cnt ++;
+	avg = diff_sum / diff_cnt;
+
+	// Limit history of averaging
+	if (diff_cnt > 32) {
+		diff_cnt = 32;
+		diff_sum -= avg;
+	}
+
+	NET_DBG("PTP adjust %d, %d, avg %d", (int32_t)second_diff, (int32_t)nanosecond_diff, avg);
+	
+	if (abs(diff_ns) > 200 ||
+		// Wait some samples before using the averaged diff value
+		(diff_cnt > 6 && abs(avg) > 50)) {
+		double diff_merge = (diff_ns + avg) / 2.0;
+		diff_sum = 0;
+		diff_cnt = 0;
+
+		adjust_ratio = (diff_merge / 2000000000) + 1.0;
+		ptp_clock_rate_adjust(clk, adjust_ratio);
+	}
 
 	/* If time difference is too high, set the clock value.
 	 * Otherwise, adjust it.
@@ -790,7 +825,6 @@ static void gptp_update_local_port_clock(void)
 			    (nanosecond_diff < -5000 ||
 			     nanosecond_diff > 5000))) {
 		bool underflow = false;
-
 		key = irq_lock();
 		ptp_clock_get(clk, &tm);
 
