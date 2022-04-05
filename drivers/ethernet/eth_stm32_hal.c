@@ -29,7 +29,10 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <drivers/clock_control/stm32_clock_control.h>
 #include <drivers/pinctrl.h>
 
+#if defined(CONFIG_BOARD_PORTENTA_H747_VISION_M7)
 #include <drivers/gpio.h>
+extern int get_mac_address(uint8_t *mac_addr, uint8_t b0, uint8_t b1, uint8_t b2);
+#endif
 
 #if defined(CONFIG_PTP_CLOCK_STM32_HAL)
 #include <drivers/ptp_clock.h>
@@ -862,6 +865,13 @@ static int eth_initialize(const struct device *dev)
 #if defined(CONFIG_NET_L2_CANBUS_ETH_TRANSLATOR)
 	set_mac_to_translator_addr(dev_data->mac_addr);
 #endif
+	ret = -1;
+#if defined(CONFIG_BOARD_PORTENTA_H747_VISION_M7)
+	ret = get_mac_address(dev_data->mac_addr, ST_OUI_B0, ST_OUI_B1, ST_OUI_B2);
+#endif
+	if (ret) {
+		gen_random_mac(dev_data->mac_addr, ST_OUI_B0, ST_OUI_B1, ST_OUI_B2);
+	}
 
 	heth->Init.MACAddr = dev_data->mac_addr;
 

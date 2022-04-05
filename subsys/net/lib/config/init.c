@@ -28,6 +28,7 @@ LOG_MODULE_REGISTER(net_config, CONFIG_NET_CONFIG_LOG_LEVEL);
 #include "ieee802154_settings.h"
 #include "bt_settings.h"
 
+extern char* get_ip_addr(void);
 extern const struct log_backend *log_backend_net_get(void);
 extern int net_init_clock_via_sntp(void);
 
@@ -124,14 +125,20 @@ static void setup_ipv4(struct net_if *iface)
 	char hr_addr[NET_IPV4_ADDR_LEN];
 #endif
 	struct in_addr addr;
+	const char* ipv4_str;
 
 	if (sizeof(CONFIG_NET_CONFIG_MY_IPV4_ADDR) == 1) {
 		/* Empty address, skip setting ANY address in this case */
 		return;
 	}
 
-	if (net_addr_pton(AF_INET, CONFIG_NET_CONFIG_MY_IPV4_ADDR, &addr)) {
-		NET_ERR("Invalid address: %s", CONFIG_NET_CONFIG_MY_IPV4_ADDR);
+	ipv4_str = get_ip_addr();
+	if (ipv4_str == NULL) {
+		ipv4_str = CONFIG_NET_CONFIG_MY_IPV4_ADDR;
+	}
+
+	if (net_addr_pton(AF_INET, ipv4_str, &addr)) {
+		NET_ERR("Invalid address: %s", ipv4_str);
 		return;
 	}
 
