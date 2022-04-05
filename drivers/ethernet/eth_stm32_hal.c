@@ -29,6 +29,8 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <drivers/clock_control/stm32_clock_control.h>
 #include <drivers/pinctrl.h>
 
+#include <drivers/gpio.h>
+
 #if defined(CONFIG_PTP_CLOCK_STM32_HAL)
 #include <drivers/ptp_clock.h>
 #endif /* CONFIG_PTP_CLOCK_STM32_HAL */
@@ -833,6 +835,24 @@ static int eth_initialize(const struct device *dev)
 		LOG_ERR("Could not configure ethernet pins");
 		return ret;
 	}
+
+#if defined(CONFIG_BOARD_PORTENTA_H747_VISION_M7)
+	// Reset external ethernet transceiver
+	struct device *gpio_dev;
+	gpio_dev = device_get_binding("GPIOJ");
+	if (gpio_dev == NULL) {
+		LOG_ERR("device_get_binding GPIOJ");
+	}
+
+	ret = gpio_pin_configure(gpio_dev, 15, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		LOG_ERR("gpio_pin_configure PJ15");
+	}
+	gpio_pin_set(gpio_dev, 15, 0);
+	k_msleep(1);
+	gpio_pin_set(gpio_dev, 15, 1);
+
+#endif
 
 	heth = &dev_data->heth;
 
