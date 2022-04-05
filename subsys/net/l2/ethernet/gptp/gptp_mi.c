@@ -14,6 +14,8 @@ LOG_MODULE_DECLARE(net_gptp, CONFIG_NET_GPTP_LOG_LEVEL);
 #include "gptp_state.h"
 #include "gptp_private.h"
 
+#include <stdlib.h>
+
 #if CONFIG_NET_GPTP_LOG_LEVEL >= LOG_LEVEL_DBG
 static const char * const state2str(enum gptp_port_state state)
 {
@@ -807,9 +809,9 @@ static void gptp_update_local_port_clock(void)
 
 	NET_DBG("PTP adjust %d, %d, avg %d", (int32_t)second_diff, (int32_t)nanosecond_diff, avg);
 	
-	if (abs(diff_ns) > 200 ||
+	if (llabs(diff_ns) > 200 ||
 		// Wait some samples before using the averaged diff value
-		(diff_cnt > 6 && abs(avg) > 50)) {
+		(diff_cnt > 6 && llabs(avg) > 50)) {
 		double diff_merge = (diff_ns + avg) / 2.0;
 		diff_sum = 0;
 		diff_cnt = 0;
