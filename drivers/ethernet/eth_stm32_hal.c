@@ -841,7 +841,7 @@ static int eth_initialize(const struct device *dev)
 
 #if defined(CONFIG_BOARD_PORTENTA_H747_VISION_M7)
 	// Reset external ethernet transceiver
-	struct device *gpio_dev;
+	const struct device *gpio_dev;
 	gpio_dev = device_get_binding("GPIOJ");
 	if (gpio_dev == NULL) {
 		LOG_ERR("device_get_binding GPIOJ");
